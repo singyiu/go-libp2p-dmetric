@@ -8,6 +8,7 @@ import (
 
 // Counter dMetric uint counter struct
 type Counter struct {
+	SourceId         string
 	Name             string
 	Desc             string
 	uintVal          uint64
@@ -17,8 +18,9 @@ type Counter struct {
 }
 
 // NewCounter create a new counter
-func NewCounter(name string, desc string, val uint64, labelMap map[string]string) *Counter {
+func NewCounter(sourceId string, name string, desc string, val uint64, labelMap map[string]string) *Counter {
 	obj := Counter{
+		SourceId: sourceId,
 		Name:     name,
 		Desc:     desc,
 		uintVal:  val,
@@ -42,7 +44,7 @@ func (c *Counter) GetVal() uint64 {
 // return json.Marshal of DMetricMessage
 func (c *Counter) ToJsonBytes() ([]byte, error) {
 	msg := DMetricMessage{
-		SourceId: "", //TODO: fill in sourceId
+		SourceId: c.SourceId,
 		Type:     MetricTypeCounter,
 		Name:     c.Name,
 		LabelId:  GetLabelIdStrFromMap(c.LabelMap),
@@ -68,14 +70,16 @@ func (c *Counter) OnPublished() {
 
 // CounterVec collection of counter with different labelIdStrs
 type CounterVec struct {
+	SourceId   string
 	Name       string
 	Desc       string
 	CounterMap map[LabelIdStr]*Counter
 }
 
 // NewCounterVec create a new CounterVec
-func NewCounterVec(name string, desc string) *CounterVec {
+func NewCounterVec(sourceId string, name string, desc string) *CounterVec {
 	cv := CounterVec{
+		SourceId:   sourceId,
 		Name:       name,
 		Desc:       desc,
 		CounterMap: make(map[LabelIdStr]*Counter),
@@ -88,7 +92,7 @@ func (cv *CounterVec) Inc(labelMap map[string]string) {
 	labelIdStr := GetLabelIdStrFromMap(labelMap)
 	c, ok := cv.CounterMap[labelIdStr]
 	if !ok {
-		c = NewCounter(cv.Name, cv.Desc, 0, labelMap)
+		c = NewCounter(cv.SourceId, cv.Name, cv.Desc, 0, labelMap)
 		cv.CounterMap[labelIdStr] = c
 	}
 	c.Inc()

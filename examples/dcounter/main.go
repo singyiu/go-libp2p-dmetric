@@ -22,11 +22,11 @@ import (
 // DiscoveryInterval is how often we re-publish our mDNS records.
 const DiscoveryInterval = time.Hour
 
-// DiscoveryServiceTag is used in our mDNS advertisements to discover other chat peers.
+// DiscoveryServiceTag is used in our mDNS advertisements to discover other peers.
 const DiscoveryServiceTag = "go-libp2p-dmetric-example-dcounter"
 
 // MetricPublisherInterval interval for checking if the registered metrics need to be published
-const MetricPublisherInterval = time.Minute
+const MetricPublisherInterval = time.Second * 30
 
 // CounterIncInterval interval for increasing the test counter val
 const CounterIncInterval = time.Second * 10
@@ -88,7 +88,7 @@ func start(ctx context.Context) {
 	}
 
 	// create a test counter and register it with the publisher
-	counter01 := dmetric.NewCounter("testCounter01", "testDesc01", 0, map[string]string{"label01":"labelValue01"})
+	counter01 := dmetric.NewCounter(string(h.ID()), "testCounter01", "testDesc01", 0, map[string]string{"label01":"labelValue01"})
 	publisher.RegisterPublishableObj(counter01)
 
 	// increase counter at regular interval
