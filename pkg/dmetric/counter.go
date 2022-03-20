@@ -1,53 +1,89 @@
 package dmetric
 
 import (
+	"encoding/json"
 	"sync/atomic"
 	"time"
 )
 
+// Counter dMetric uint counter struct
 type Counter struct {
-	Name string
-	Desc string
-	val  uint64
-	LabelMap map[string]string
+	Name             string
+	Desc             string
+	uintVal          uint64
+	LabelMap         map[string]string
 	LastPublishedVal uint64
-	LastPublishedAt time.Time
+	LastPublishedAt  time.Time
 }
 
+// NewCounter create a new counter
 func NewCounter(name string, desc string, val uint64, labelMap map[string]string) *Counter {
 	obj := Counter{
 		Name:     name,
 		Desc:     desc,
-		val:   val,
+		uintVal:  val,
 		LabelMap: labelMap,
 	}
 	return &obj
 }
 
+// Inc increase the counter value by 1
 func (c *Counter) Inc() {
-	atomic.AddUint64(&c.val, 1)
+	atomic.AddUint64(&c.uintVal, 1)
 }
 
+// GetVal return the value of the counter
 func (c *Counter) GetVal() uint64 {
-	ival := atomic.LoadUint64(&c.val)
+	ival := atomic.LoadUint64(&c.uintVal)
 	return ival
 }
 
+// ToJsonBytes for Marshalable interface
+// return json.Marshal of DMetricMessage
+func (c *Counter) ToJsonBytes() ([]byte, error) {
+	msg := DMetricMessage{
+		SourceId: "", //TODO: fill in sourceId
+		Type:     MetricTypeCounter,
+		Name:     c.Name,
+		LabelId:  GetLabelIdStrFromMap(c.LabelMap),
+		UIntVal:  c.uintVal,
+	}
+	return json.Marshal(msg)
+}
+
+// ShouldBePublished for Publishable interface
+// return true if LastPublishedVal is not the same as uintVal
+func (c *Counter) ShouldBePublished() bool {
+	return c.LastPublishedVal != c.uintVal
+}
+
+// OnPublished for Publishable interface
+// update LastPublishedVal upon published
+func (c *Counter) OnPublished() {
+	c.LastPublishedVal = c.uintVal
+	c.LastPublishedAt = time.Now()
+}
+
+// CounterVec =============================
+
+// CounterVec collection of counter with different labelIdStrs
 type CounterVec struct {
-	Name string
-	Desc string
+	Name       string
+	Desc       string
 	CounterMap map[LabelIdStr]*Counter
 }
 
+// NewCounterVec create a new CounterVec
 func NewCounterVec(name string, desc string) *CounterVec {
 	cv := CounterVec{
-		Name:     name,
-		Desc:     desc,
+		Name:       name,
+		Desc:       desc,
 		CounterMap: make(map[LabelIdStr]*Counter),
 	}
 	return &cv
 }
 
+// Inc increase the value of the target counter, or create a new one if needed
 func (cv *CounterVec) Inc(labelMap map[string]string) {
 	labelIdStr := GetLabelIdStrFromMap(labelMap)
 	c, ok := cv.CounterMap[labelIdStr]
@@ -58,6 +94,7 @@ func (cv *CounterVec) Inc(labelMap map[string]string) {
 	c.Inc()
 }
 
+// GetValueOf return the value of the target counter
 func (cv *CounterVec) GetValueOf(labelMap map[string]string) uint64 {
 	labelIdStr := GetLabelIdStrFromMap(labelMap)
 	c, ok := cv.CounterMap[labelIdStr]

@@ -1,4 +1,4 @@
-package rxos
+package rx
 
 import (
 	"github.com/reactivex/rxgo/v2"
