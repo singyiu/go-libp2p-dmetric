@@ -4,12 +4,14 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"github.com/reactivex/rxgo/v2"
 	"github.com/rs/zerolog/log"
 	"github.com/singyiu/go-libp2p-dmetric/pkg/dmetric"
 	"github.com/singyiu/go-libp2p-dmetric/pkg/pubsubpublisher"
 	"github.com/singyiu/go-libp2p-dmetric/pkg/rx"
+	"github.com/singyiu/go-libp2p-dmetric/pkg/rxpubsub"
 	"time"
 
 	"github.com/libp2p/go-libp2p"
@@ -30,6 +32,9 @@ const MetricPublisherInterval = time.Second * 30
 
 // CounterIncInterval interval for increasing the test counter val
 const CounterIncInterval = time.Second * 10
+
+const PublisherRole = "publisher"
+const CollectorRole = "collector"
 
 // discoveryNotifee gets notified when we find a new peer via mDNS discovery
 type discoveryNotifee struct {
@@ -64,6 +69,10 @@ func GetMapFuncAnyToIncreasedCounterVal(c *dmetric.Counter) func(context.Context
 
 // start the processing loop
 func start(ctx context.Context) {
+	roleFlag := flag.String("role", PublisherRole, "publisher or collector role")
+	flag.Parse()
+	role := *roleFlag
+
 	// create a new libp2p Host that listens on a random TCP port
 	h, err := libp2p.New(libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/0"))
 	if err != nil {
@@ -75,38 +84,65 @@ func start(ctx context.Context) {
 	if err != nil {
 		panic(err)
 	}
+	topic, err := ps.Join(DiscoveryServiceTag)
+	if err != nil {
+		panic(err)
+	}
 
 	// setup local mDNS discovery
 	if err := setupDiscovery(h); err != nil {
 		panic(err)
 	}
 
-	// create a pubsub publisher that would check and publish if any metric should be published at regular interval
-	publisher, err := pubsubpublisher.NewIntervalPublisher(ctx, ps, "", MetricPublisherInterval)
-	if err != nil {
-		panic(err)
-	}
+	log.Info().Msgf("starting role %+v", role)
+	if role == PublisherRole {
+		// create a pubsub publisher that would check and publish if any metric should be published at regular interval
+		publisher, err := pubsubpublisher.NewIntervalPublisher(ctx, topic, MetricPublisherInterval)
+		if err != nil {
+			panic(err)
+		}
 
-	// create a test counter and register it with the publisher
-	counter01 := dmetric.NewCounter(string(h.ID()), "testCounter01", "testDesc01", 0, map[string]string{"label01":"labelValue01"})
-	publisher.RegisterPublishableObj(counter01)
+		// create a test counter and register it with the publisher
+		counter01 := dmetric.NewCounter(string(h.ID()), "testCounter01", "testDesc01", 0, map[string]string{"label01":"labelValue01"})
+		publisher.RegisterPublishableObj(counter01)
 
-	// increase counter at regular interval
-	log.Info().Msgf("Increase counter at regular interval %+v", CounterIncInterval)
-	updateCounterCh := rxgo.Interval(rxgo.WithDuration(CounterIncInterval)).
-		Map(GetMapFuncAnyToIncreasedCounterVal(counter01)).
-		Map(rx.GetSideEffectLog("IncreasedCounterVal")).
-		OnErrorReturn(rx.GetErrFuncLogError("updateCounterCh")).
-		Observe(rxgo.WithErrorStrategy(rxgo.ContinueOnError))
+		// increase counter at regular interval
+		log.Info().Msgf("Increase counter at regular interval %+v", CounterIncInterval)
+		updateCounterCh := rxgo.Interval(rxgo.WithDuration(CounterIncInterval)).
+			Map(GetMapFuncAnyToIncreasedCounterVal(counter01)).
+			Map(rx.GetSideEffectLog("IncreasedCounterVal")).
+			OnErrorReturn(rx.GetErrFuncLogError("updateCounterCh")).
+			Observe(rxgo.WithErrorStrategy(rxgo.ContinueOnError))
 
-	for {
-		select {
-		case _, ok := <-updateCounterCh:
-			if !ok {
-				log.Fatal().Stack().Msg("updateCounterCh closed")
+		for {
+			select {
+			case _, ok := <-updateCounterCh:
+				if !ok {
+					panic("updateCounterCh closed")
+				}
+			case <-ctx.Done():
+				return
 			}
-		case <-ctx.Done():
-			return
+		}
+	} else if role == CollectorRole {
+		messageProducer, err := rxpubsub.GetMessageProducerFromTopic(ctx, h.ID(), topic)
+		if err != nil {
+			panic(err)
+		}
+
+		msgCh := messageProducer.
+			Map(rx.GetSideEffectLog("messageReceived")).
+			Observe(rxgo.WithErrorStrategy(rxgo.ContinueOnError))
+
+		for {
+			select {
+			case _, ok := <-msgCh:
+				if !ok {
+					panic("msgCh closed")
+				}
+			case <-ctx.Done():
+				return
+			}
 		}
 	}
 }

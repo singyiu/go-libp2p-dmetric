@@ -11,19 +11,13 @@ import (
 
 type Publisher struct {
 	ctx             context.Context
-	pubSub          *pubsub.PubSub
 	topic           *pubsub.Topic
 	publishableObjs []common.Publishable
 }
 
-func NewIntervalPublisher(ctx context.Context, pubSub *pubsub.PubSub, topicStr string, publishInterval time.Duration) (*Publisher, error) {
-	topic, err := pubSub.Join(topicStr)
-	if err != nil {
-		return nil, err
-	}
+func NewIntervalPublisher(ctx context.Context, topic *pubsub.Topic, publishInterval time.Duration) (*Publisher, error) {
 	p := Publisher{
 		ctx:    ctx,
-		pubSub: pubSub,
 		topic:  topic,
 	}
 	go p.StartPublishIntervalLoop(ctx, publishInterval)
