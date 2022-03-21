@@ -2,13 +2,14 @@ package dmetric
 
 import (
 	"encoding/json"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"sync/atomic"
 	"time"
 )
 
 // Counter dMetric uint counter struct
 type Counter struct {
-	SourceId         string
+	SourceId         peer.ID
 	Name             string
 	Desc             string
 	uintVal          uint64
@@ -18,7 +19,7 @@ type Counter struct {
 }
 
 // NewCounter create a new counter
-func NewCounter(sourceId string, name string, desc string, val uint64, labelMap map[string]string) *Counter {
+func NewCounter(sourceId peer.ID, name string, desc string, val uint64, labelMap map[string]string) *Counter {
 	obj := Counter{
 		SourceId: sourceId,
 		Name:     name,
@@ -41,9 +42,9 @@ func (c *Counter) GetVal() uint64 {
 }
 
 // ToJsonBytes for Marshalable interface
-// return json.Marshal of DMetricMessage
+// return json.Marshal of Message
 func (c *Counter) ToJsonBytes() ([]byte, error) {
-	msg := DMetricMessage{
+	msg := Message{
 		SourceId: c.SourceId,
 		Type:     MetricTypeCounter,
 		Name:     c.Name,
@@ -70,14 +71,14 @@ func (c *Counter) OnPublished() {
 
 // CounterVec collection of counter with different labelIdStrs
 type CounterVec struct {
-	SourceId   string
+	SourceId   peer.ID
 	Name       string
 	Desc       string
 	CounterMap map[LabelIdStr]*Counter
 }
 
 // NewCounterVec create a new CounterVec
-func NewCounterVec(sourceId string, name string, desc string) *CounterVec {
+func NewCounterVec(sourceId peer.ID, name string, desc string) *CounterVec {
 	cv := CounterVec{
 		SourceId:   sourceId,
 		Name:       name,

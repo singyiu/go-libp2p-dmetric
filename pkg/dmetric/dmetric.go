@@ -1,5 +1,7 @@
 package dmetric
 
+import "github.com/libp2p/go-libp2p-core/peer"
+
 type MetricType uint64
 
 const (
@@ -7,8 +9,8 @@ const (
 	MetricTypeCounter
 )
 
-type DMetricMessage struct {
-	SourceId string     `json:"sourceId"`
+type Message struct {
+	SourceId peer.ID     `json:"sourceId"`
 	Type     MetricType `json:"type"`
 	Name     string     `json:"name"`
 	LabelId  LabelIdStr `json:"labelId"`

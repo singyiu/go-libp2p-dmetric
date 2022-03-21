@@ -103,10 +103,10 @@ func start(ctx context.Context) {
 		}
 
 		// create a test counter and register it with the publisher
-		counter01 := dmetric.NewCounter(string(h.ID()), "testCounter01", "testDesc01", 0, map[string]string{"label01":"labelValue01"})
+		counter01 := dmetric.NewCounter(h.ID(), "testCounter01", "testDesc01", 0, map[string]string{"label01":"labelValue01"})
 		publisher.RegisterPublishableObj(counter01)
 
-		// increase counter at regular interval
+		// for testing, increase counter at regular interval
 		log.Info().Msgf("Increase counter at regular interval %+v", CounterIncInterval)
 		updateCounterCh := rxgo.Interval(rxgo.WithDuration(CounterIncInterval)).
 			Map(GetMapFuncAnyToIncreasedCounterVal(counter01)).
@@ -131,7 +131,9 @@ func start(ctx context.Context) {
 		}
 
 		msgCh := messageProducer.
-			Map(rx.GetSideEffectLog("messageReceived")).
+			Map(rx.GetSideEffectLog("pubSubMessage")).
+			Map(rxpubsub.MapFuncPubSubMsgToObj[dmetric.Message]).
+			Map(rx.GetSideEffectLog("dmetricMessage")).
 			Observe(rxgo.WithErrorStrategy(rxgo.ContinueOnError))
 
 		for {

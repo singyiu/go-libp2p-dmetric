@@ -2,6 +2,8 @@ package rxpubsub
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/reactivex/rxgo/v2"
@@ -32,4 +34,18 @@ func GetMessageProducerFromTopic(ctx context.Context, hostId peer.ID, topic *pub
 	}
 	go LoopSubscribeToTopicAndPublishToChannel(ctx, hostId, sub, outputCh)
 	return rxgo.FromChannel(outputCh), nil
+}
+
+func MapFuncPubSubMsgToObj[T any](_ context.Context, i interface{}) (interface{}, error) {
+	msg, ok := i.(*pubsub.Message)
+	if !ok {
+		return nil, fmt.Errorf("input not *pubsub.Message %+v", i)
+	}
+
+	objPtr := new(T)
+	err := json.Unmarshal(msg.Data, objPtr)
+	if err != nil {
+		return nil, err
+	}
+	return objPtr, nil
 }
