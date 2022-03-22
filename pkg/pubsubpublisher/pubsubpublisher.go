@@ -17,8 +17,8 @@ type Publisher struct {
 
 func NewIntervalPublisher(ctx context.Context, topic *pubsub.Topic, publishInterval time.Duration) (*Publisher, error) {
 	p := Publisher{
-		ctx:    ctx,
-		topic:  topic,
+		ctx:   ctx,
+		topic: topic,
 	}
 	go p.StartPublishIntervalLoop(ctx, publishInterval)
 	return &p, nil

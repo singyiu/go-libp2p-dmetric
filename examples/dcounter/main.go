@@ -21,9 +21,6 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
 )
 
-// DiscoveryInterval is how often we re-publish our mDNS records.
-const DiscoveryInterval = time.Hour
-
 // DiscoveryServiceTag is used in our mDNS advertisements to discover other peers.
 const DiscoveryServiceTag = "go-libp2p-dmetric-example-dcounter"
 
@@ -103,7 +100,7 @@ func start(ctx context.Context) {
 		}
 
 		// create a test counter and register it with the publisher
-		counter01 := dmetric.NewCounter(h.ID(), "testCounter01", "testDesc01", 0, map[string]string{"label01":"labelValue01"})
+		counter01 := dmetric.NewCounter(h.ID(), "testCounter01", "testDesc01", 0, map[string]string{"label01": "labelValue01"})
 		publisher.RegisterPublishableObj(counter01)
 
 		// for testing, increase counter at regular interval

@@ -1,26 +1,30 @@
 package dmetric
 
 import (
+	"encoding/json"
 	"github.com/samber/lo"
-	"sort"
-	"strings"
 )
 
-type LabelIdStr string
+type LabelPair struct {
+	Name   string `json:"name"`
+	StrVal string `json:"strVal"`
+}
 
-func GetLabelIdStrFromMap(m map[string]string) LabelIdStr {
-	if len(m) == 0 {
-		return ""
-	}
-
+// GetLabelPairsFromLabelMap return []LabelPair with a sorted map
+func GetLabelPairsFromLabelMap(m map[string]string) []LabelPair {
+	var output []LabelPair
 	keys := lo.Keys(m)
-	sort.Strings(keys)
-	var sb strings.Builder
 	for _, k := range keys {
-		sb.WriteString(k)
-		sb.WriteString(":")
-		sb.WriteString(m[k])
-		sb.WriteString(",")
+		lp := LabelPair{
+			Name:   k,
+			StrVal: m[k],
+		}
+		output = append(output, lp)
 	}
-	return LabelIdStr(sb.String())
+	return output
+}
+
+func GetLabelIdStrFromLabelPairs(lp []LabelPair) string {
+	bytes, _ := json.Marshal(lp)
+	return string(bytes)
 }

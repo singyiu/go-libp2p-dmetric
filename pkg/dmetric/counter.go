@@ -13,7 +13,7 @@ type Counter struct {
 	Name             string
 	Desc             string
 	uintVal          uint64
-	LabelMap         map[string]string
+	LabelPairs       []LabelPair
 	LastPublishedVal uint64
 	LastPublishedAt  time.Time
 }
@@ -21,11 +21,11 @@ type Counter struct {
 // NewCounter create a new counter
 func NewCounter(sourceId peer.ID, name string, desc string, val uint64, labelMap map[string]string) *Counter {
 	obj := Counter{
-		SourceId: sourceId,
-		Name:     name,
-		Desc:     desc,
-		uintVal:  val,
-		LabelMap: labelMap,
+		SourceId:   sourceId,
+		Name:       name,
+		Desc:       desc,
+		uintVal:    val,
+		LabelPairs: GetLabelPairsFromLabelMap(labelMap),
 	}
 	return &obj
 }
@@ -45,11 +45,11 @@ func (c *Counter) GetVal() uint64 {
 // return json.Marshal of Message
 func (c *Counter) ToJsonBytes() ([]byte, error) {
 	msg := Message{
-		SourceId: c.SourceId,
-		Type:     MetricTypeCounter,
-		Name:     c.Name,
-		LabelId:  GetLabelIdStrFromMap(c.LabelMap),
-		UIntVal:  c.uintVal,
+		SourceId:   c.SourceId,
+		Type:       MetricTypeCounter,
+		Name:       c.Name,
+		LabelPairs: c.LabelPairs,
+		UIntVal:    c.uintVal,
 	}
 	return json.Marshal(msg)
 }
@@ -74,7 +74,7 @@ type CounterVec struct {
 	SourceId   peer.ID
 	Name       string
 	Desc       string
-	CounterMap map[LabelIdStr]*Counter
+	CounterMap map[string]*Counter
 }
 
 // NewCounterVec create a new CounterVec
@@ -83,14 +83,15 @@ func NewCounterVec(sourceId peer.ID, name string, desc string) *CounterVec {
 		SourceId:   sourceId,
 		Name:       name,
 		Desc:       desc,
-		CounterMap: make(map[LabelIdStr]*Counter),
+		CounterMap: make(map[string]*Counter),
 	}
 	return &cv
 }
 
 // Inc increase the value of the target counter, or create a new one if needed
 func (cv *CounterVec) Inc(labelMap map[string]string) {
-	labelIdStr := GetLabelIdStrFromMap(labelMap)
+	labelPairs := GetLabelPairsFromLabelMap(labelMap)
+	labelIdStr := GetLabelIdStrFromLabelPairs(labelPairs)
 	c, ok := cv.CounterMap[labelIdStr]
 	if !ok {
 		c = NewCounter(cv.SourceId, cv.Name, cv.Desc, 0, labelMap)
@@ -101,7 +102,8 @@ func (cv *CounterVec) Inc(labelMap map[string]string) {
 
 // GetValueOf return the value of the target counter
 func (cv *CounterVec) GetValueOf(labelMap map[string]string) uint64 {
-	labelIdStr := GetLabelIdStrFromMap(labelMap)
+	labelPairs := GetLabelPairsFromLabelMap(labelMap)
+	labelIdStr := GetLabelIdStrFromLabelPairs(labelPairs)
 	c, ok := cv.CounterMap[labelIdStr]
 	if !ok {
 		return 0

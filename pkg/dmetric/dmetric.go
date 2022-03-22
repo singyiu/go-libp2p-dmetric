@@ -10,9 +10,9 @@ const (
 )
 
 type Message struct {
-	SourceId peer.ID     `json:"sourceId"`
-	Type     MetricType `json:"type"`
-	Name     string     `json:"name"`
-	LabelId  LabelIdStr `json:"labelId"`
-	UIntVal  uint64     `json:"uintVal"`
+	SourceId   peer.ID     `json:"sourceId"`
+	Type       MetricType  `json:"type"`
+	Name       string      `json:"name"`
+	LabelPairs []LabelPair `json:"labelPairs"`
+	UIntVal    uint64      `json:"uintVal"`
 }
