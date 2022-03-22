@@ -9,6 +9,7 @@ import (
 	"github.com/reactivex/rxgo/v2"
 	"github.com/rs/zerolog/log"
 	"github.com/singyiu/go-libp2p-dmetric/pkg/dmetric"
+	"github.com/singyiu/go-libp2p-dmetric/pkg/prometheushelper"
 	"github.com/singyiu/go-libp2p-dmetric/pkg/pubsubpublisher"
 	"github.com/singyiu/go-libp2p-dmetric/pkg/rx"
 	"github.com/singyiu/go-libp2p-dmetric/pkg/rxpubsub"
@@ -100,7 +101,11 @@ func start(ctx context.Context) {
 		}
 
 		// create a test counter and register it with the publisher
-		counter01 := dmetric.NewCounter(h.ID(), "testCounter01", "testDesc01", 0, map[string]string{"label01": "labelValue01"})
+		labelPairs01 := []dmetric.LabelPair{{
+			Name:   "label01",
+			StrVal: "value01",
+		}}
+		counter01 := dmetric.NewCounter(h.ID(), "testCounter01", "testDesc01", 0, labelPairs01)
 		publisher.RegisterPublishableObj(counter01)
 
 		// for testing, increase counter at regular interval
@@ -122,22 +127,28 @@ func start(ctx context.Context) {
 			}
 		}
 	} else if role == CollectorRole {
+		reg := dmetric.NewRegisterer()
+
 		messageProducer, err := rxpubsub.GetMessageProducerFromTopic(ctx, h.ID(), topic)
 		if err != nil {
 			panic(err)
 		}
 
-		msgCh := messageProducer.
-			Map(rx.GetSideEffectLog("pubSubMessage")).
+		dMessageCh := messageProducer.
+			//Map(rx.GetSideEffectLog("pubSubMessage")).
 			Map(rxpubsub.MapFuncPubSubMsgToObj[dmetric.Message]).
 			Map(rx.GetSideEffectLog("dmetricMessage")).
+			Map(dmetric.GetSideEffectMessageToRegistererProcessing(reg)).
+			OnErrorReturn(rx.GetErrFuncLogError("dMessageCh")).
 			Observe(rxgo.WithErrorStrategy(rxgo.ContinueOnError))
+
+		go prometheushelper.RunServer(ctx, ":2112")
 
 		for {
 			select {
-			case _, ok := <-msgCh:
+			case _, ok := <-dMessageCh:
 				if !ok {
-					panic("msgCh closed")
+					panic("dMessageCh closed")
 				}
 			case <-ctx.Done():
 				return

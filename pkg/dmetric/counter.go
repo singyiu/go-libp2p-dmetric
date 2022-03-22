@@ -19,13 +19,13 @@ type Counter struct {
 }
 
 // NewCounter create a new counter
-func NewCounter(sourceId peer.ID, name string, desc string, val uint64, labelMap map[string]string) *Counter {
+func NewCounter(sourceId peer.ID, name string, desc string, val uint64, labelPairs []LabelPair) *Counter {
 	obj := Counter{
 		SourceId:   sourceId,
 		Name:       name,
 		Desc:       desc,
 		uintVal:    val,
-		LabelPairs: GetLabelPairsFromLabelMap(labelMap),
+		LabelPairs: labelPairs,
 	}
 	return &obj
 }
@@ -69,7 +69,7 @@ func (c *Counter) OnPublished() {
 
 // CounterVec =============================
 
-// CounterVec collection of counter with different labelIdStrs
+// CounterVec collection of counters
 type CounterVec struct {
 	SourceId   peer.ID
 	Name       string
@@ -89,22 +89,19 @@ func NewCounterVec(sourceId peer.ID, name string, desc string) *CounterVec {
 }
 
 // Inc increase the value of the target counter, or create a new one if needed
-func (cv *CounterVec) Inc(labelMap map[string]string) {
-	labelPairs := GetLabelPairsFromLabelMap(labelMap)
-	labelIdStr := GetLabelIdStrFromLabelPairs(labelPairs)
-	c, ok := cv.CounterMap[labelIdStr]
+func (cv *CounterVec) Inc(labelPairs []LabelPair) {
+	labelPairsStr := LabelPairs(labelPairs).String()
+	c, ok := cv.CounterMap[labelPairsStr]
 	if !ok {
-		c = NewCounter(cv.SourceId, cv.Name, cv.Desc, 0, labelMap)
-		cv.CounterMap[labelIdStr] = c
+		c = NewCounter(cv.SourceId, cv.Name, cv.Desc, 0, labelPairs)
+		cv.CounterMap[labelPairsStr] = c
 	}
 	c.Inc()
 }
 
 // GetValueOf return the value of the target counter
-func (cv *CounterVec) GetValueOf(labelMap map[string]string) uint64 {
-	labelPairs := GetLabelPairsFromLabelMap(labelMap)
-	labelIdStr := GetLabelIdStrFromLabelPairs(labelPairs)
-	c, ok := cv.CounterMap[labelIdStr]
+func (cv *CounterVec) GetValueOf(labelPairs []LabelPair) uint64 {
+	c, ok := cv.CounterMap[LabelPairs(labelPairs).String()]
 	if !ok {
 		return 0
 	}

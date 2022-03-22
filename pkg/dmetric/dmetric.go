@@ -16,3 +16,13 @@ type Message struct {
 	LabelPairs []LabelPair `json:"labelPairs"`
 	UIntVal    uint64      `json:"uintVal"`
 }
+
+func (m Message) GetLabelPairsStr() string {
+	return LabelPairs(m.LabelPairs).String()
+}
+
+func (m Message) GetLabelPairsMap() map[string]string {
+	output := LabelPairs(m.LabelPairs).ToMap()
+	output["sourceId"] = m.SourceId.String()
+	return output
+}

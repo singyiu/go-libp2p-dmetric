@@ -10,6 +10,8 @@ type LabelPair struct {
 	StrVal string `json:"strVal"`
 }
 
+type LabelPairs []LabelPair
+
 // GetLabelPairsFromLabelMap return []LabelPair with a sorted map
 func GetLabelPairsFromLabelMap(m map[string]string) []LabelPair {
 	var output []LabelPair
@@ -24,7 +26,15 @@ func GetLabelPairsFromLabelMap(m map[string]string) []LabelPair {
 	return output
 }
 
-func GetLabelIdStrFromLabelPairs(lp []LabelPair) string {
-	bytes, _ := json.Marshal(lp)
+func (lps LabelPairs) String() string {
+	bytes, _ := json.Marshal(lps)
 	return string(bytes)
+}
+
+func (lps LabelPairs) ToMap() map[string]string {
+	output := make(map[string]string)
+	for _, lp := range lps {
+		output[lp.Name] = lp.StrVal
+	}
+	return output
 }
