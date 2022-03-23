@@ -34,6 +34,8 @@ const CounterIncInterval = time.Second * 10
 const PublisherRole = "publisher"
 const CollectorRole = "collector"
 
+const PrometheusServerAddressStr = ":2112"
+
 // discoveryNotifee gets notified when we find a new peer via mDNS discovery
 type discoveryNotifee struct {
 	h host.Host
@@ -135,14 +137,13 @@ func start(ctx context.Context) {
 		}
 
 		dMessageCh := messageProducer.
-			//Map(rx.GetSideEffectLog("pubSubMessage")).
 			Map(rxpubsub.MapFuncPubSubMsgToObj[dmetric.Message]).
 			Map(rx.GetSideEffectLog("dmetricMessage")).
-			Map(dmetric.GetSideEffectMessageToRegistererProcessing(reg)).
+			Map(dmetric.GetSideEffectPublishMessageToPrometheus(reg)).
 			OnErrorReturn(rx.GetErrFuncLogError("dMessageCh")).
 			Observe(rxgo.WithErrorStrategy(rxgo.ContinueOnError))
 
-		go prometheushelper.RunServer(ctx, ":2112")
+		go prometheushelper.RunServer(ctx, PrometheusServerAddressStr)
 
 		for {
 			select {

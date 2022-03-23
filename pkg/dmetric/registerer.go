@@ -19,7 +19,7 @@ func NewRegisterer() *Registerer {
 	return &r
 }
 
-func GetSideEffectMessageToRegistererProcessing(reg *Registerer) func(context.Context, interface{}) (interface{}, error) {
+func GetSideEffectPublishMessageToPrometheus(reg *Registerer) func(context.Context, interface{}) (interface{}, error) {
 	return func(_ context.Context, i interface{}) (interface{}, error) {
 		msg, ok := i.(*Message)
 		if !ok {
