@@ -18,7 +18,9 @@ type Message struct {
 }
 
 func (m Message) GetLabelPairsStr() string {
-	return LabelPairs(m.LabelPairs).String()
+	labelPairsWithSourceId := []LabelPair{{Name: "sourceId", StrVal: m.SourceId.String()}}
+	labelPairsWithSourceId = append(labelPairsWithSourceId, m.LabelPairs...)
+	return LabelPairs(labelPairsWithSourceId).String()
 }
 
 func (m Message) GetLabelPairsMap() map[string]string {
